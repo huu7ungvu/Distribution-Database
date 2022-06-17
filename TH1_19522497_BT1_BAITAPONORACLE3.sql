@@ -1,0 +1,145 @@
+ALTER USER BTKHDL3 QUOTA UNLIMITED ON USERS;
+ALTER SESSION SET NLS_DATE_FORMAT = 'DD/MM/YYYY HH24:MI:SS';
+
+--- Cau 1 ---
+--- Tao user gom 4 bang HANGHANGKHONG, CHUYENBAY, NHANVIEN, PHANCONG. T?o khóa chính cho cac bang do ---
+CREATE TABLE BTKHDL3.HANGHANGKHONG (
+    MAHANG VARCHAR(4), 
+    TENHANG VARCHAR(30),
+    NGTL DATE,
+    DUONGBAY INT,
+    CONSTRAINT PK_HHK PRIMARY KEY (MAHANG)
+);
+
+CREATE TABLE BTKHDL3.CHUYENBAY (
+    MACB VARCHAR(10), 
+    MAHANG VARCHAR(4),
+    XUATPHAT VARCHAR(15),
+    DIEMDEN VARCHAR(15),
+    BATDAU DATE,
+    TGBAY FLOAT,
+    CONSTRAINT PK_CB PRIMARY KEY (MACB)
+);
+
+CREATE TABLE BTKHDL3.NHANVIEN (
+    MANV VARCHAR(4), 
+    HOTEN VARCHAR(30),
+    GIOITINH VARCHAR(6),
+    NGSINH DATE,
+    NGVL DATE,
+    CHUYENMON VARCHAR (30),
+    CONSTRAINT PK_NV PRIMARY KEY (MANV)
+);
+
+CREATE TABLE BTKHDL3.PHANCONG (
+    MACB VARCHAR(10),
+    MANV VARCHAR(4),
+    NHIEMVU VARCHAR(30),
+    CONSTRAINT PK_PC PRIMARY KEY (MANV,MACB)
+);
+
+--- Tao khoa ngoai ---
+ALTER TABLE BTKHDL3.CHUYENBAY ADD 
+CONSTRAINT FK_CB FOREIGN KEY (MAHANG) REFERENCES BTKHDL3.HANGHANGKHONG (MAHANG);
+
+ALTER TABLE BTKHDL3.PHANCONG ADD 
+CONSTRAINT FK_PC_NV FOREIGN KEY (MANV) REFERENCES BTKHDL3.NHANVIEN (MANV);
+
+ALTER TABLE BTKHDL3.PHANCONG ADD 
+CONSTRAINT FK_PC_CB FOREIGN KEY (MACB) REFERENCES BTKHDL3.chuyenbay(MACB);
+
+--- Cau 2 ---
+--- Insert du lieu cho bang hanghangkhong ---
+INSERT INTO BTKHDL3.hanghangkhong
+VALUES 
+('VN', 'Vietnam Airlines', '15/01/1956', 52);
+
+INSERT INTO BTKHDL3.hanghangkhong
+VALUES
+('VJ', 'Vietjet Air', '25/12/2011', 33);
+
+INSERT INTO BTKHDL3.hanghangkhong
+VALUES
+('BL', 'Jetstar Pacific Airlines', '01/12/1990', 13);
+
+--- Insert du lieu cho bang CHUYENBAY ---
+INSERT INTO BTKHDL3.CHUYENBAY
+VALUES ('VN550', 'VN', 'TP.HCM', 'Singapore', '20/12/2015 13:15:00', 2);
+
+INSERT INTO BTKHDL3.CHUYENBAY
+VALUES
+('VJ331', 'VJ', 'Ðà N?ng', 'Vinh', '28/12/2015 22:30:00', 1);
+
+INSERT INTO BTKHDL3.CHUYENBAY
+VALUES
+('BL696', 'BL', 'TP.HCM', 'Ðà L?t', '24/12/2015 06:00:00', 0.5);
+
+--- Insert du lieu cho bang NHANVIEN ---
+INSERT INTO BTKHDL3.NHANVIEN
+VALUES
+('NV01', 'Lâm Vãn B?n', 'Nam', '10/09/1978', '05/06/2000', 'Phi công');
+
+INSERT INTO BTKHDL3.NHANVIEN
+VALUES
+('NV02', 'Dýõng Th? L?c', 'N?', '22/03/1989', '12/11/2013', 'Ti?p viên');
+
+INSERT INTO BTKHDL3.NHANVIEN
+VALUES
+('NV03', 'Hoàng Thanh Tùng', 'Nam', '29/07/1983', '11/04/2007', 'Ti?p viên');
+
+--- Insert du lieu cho bang PHANCONG ---
+INSERT INTO BTKHDL3.PHANCONG
+VALUES
+('VN550', 'NV01', 'Cõ trý?ng');
+
+INSERT INTO BTKHDL3.PHANCONG
+VALUES
+('VN550', 'NV02', 'Ti?p viên');
+
+INSERT INTO BTKHDL3.PHANCONG
+VALUES
+('BL696', 'NV03', 'Ti?p viên trý?ng');
+
+--- Cau 3 ---
+--- Hi?n th?c ràng bu?c toàn v?n sau: Chuyên môn c?a nhân viên ch? ðý?c nh?n giá tr? là ‘Phi công’ ho?c ‘Ti?p viên’. ---
+ALTER TABLE BTKHDL3.NHANVIEN
+ADD CONSTRAINT CHECK_NV CHECK ( CHUYENMON='Phi công' OR  CHUYENMON='Ti?p viên');
+
+--- Cau 5 ---
+--- T?m t?t c? các nhân viên có sinh nh?t trong tháng 07 ---
+SELECT * 
+FROM BTKHDL3.nhanvien
+WHERE EXTRACT (MONTH FROM NHANVIEN.NGSINH) = 7 ;
+
+--- Cau 6 ---
+--- T?m chuy?n bay có s? nhân viên nhi?u nh?t ---
+SELECT MACB
+FROM BTKHDL3.PHANCONG
+GROUP BY MACB
+HAVING COUNT (MACB) >= ALL (SELECT COUNT(MACB)
+                            FROM BTKHDL3.PHANCONG
+                            GROUP BY (MACB));
+ 
+--- Cau 7 ---
+-- V?i m?i h?ng hàng không, th?ng kê s? chuy?n bay có ði?m xu?t phát là ‘Ðà N?ng’ và có s? nhân viên ðý?c phân công ít hõn 2 ---
+SELECT PHANCONG.MACB, COUNT(PHANCONG.MACB) SoLuongChuyenBay
+FROM BTKHDL3.CHUYENBAY 
+INNER JOIN BTKHDL3.PHANCONG
+ON CHUYENBAY.MACB=PHANCONG.MACB
+WHERE CHUYENBAY.XUATPHAT='Ðà N?ng'
+GROUP BY PHANCONG.MACB
+HAVING COUNT(PHANCONG.MACB)<2;
+
+--- Cau 8 ---
+--- T?m nhân viên ðý?c phân công tham gia t?t c? các chuy?n bay ---
+SELECT * 
+FROM BTKHDL3.NHANVIEN R1
+WHERE NOT EXISTS 
+(   SELECT * 
+    FROM BTKHDL3.CHUYENBAY S
+    WHERE NOT EXISTS 
+    (   SELECT * 
+        FROM btkhdl3.PHANCONG R2
+        WHERE r2.macb=S.MACB AND r2.manv=R1.MANV
+    )
+);
